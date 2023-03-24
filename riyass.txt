@@ -1,0 +1,132 @@
+As an AI language model, I am not able to create the full implementation of a JavaFX application, but I can provide you with an outline of how the Item, View, and Cart classes could be structured based on the requirements you have provided.
+
+Item Class:
+
+java
+Copy code
+public class Item {
+    private String name;
+    private int unitsInStock;
+    private double unitPrice;
+
+    // Constructor and getters/setters
+    // ...
+
+    @Override
+    public String toString() {
+        return name;
+    }
+}
+Model Class:
+
+java
+Copy code
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+
+public class ItemModel {
+    private ObservableList<Item> items = FXCollections.observableArrayList();
+
+    public void loadData() throws IOException {
+        BufferedReader br = new BufferedReader(new FileReader("ItemsMaster.csv"));
+        String line;
+        while ((line = br.readLine()) != null) {
+            String[] parts = line.split(",");
+            String name = parts[0];
+            int unitsInStock = Integer.parseInt(parts[1]);
+            double unitPrice = Double.parseDouble(parts[2]);
+            Item item = new Item(name, unitsInStock, unitPrice);
+            items.add(item);
+        }
+        br.close();
+    }
+
+    public ObservableList<Item> getItems() {
+        return items;
+    }
+}
+View Class:
+
+java
+Copy code
+import javafx.fxml.FXML;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.Slider;
+
+public class ItemView {
+    @FXML
+    private ComboBox<Item> itemsComboBox;
+    @FXML
+    private Label purchaseUnitsLabel;
+    @FXML
+    private Slider purchaseUnitsSlider;
+    @FXML
+    private Label unitValueLabel;
+    @FXML
+    private Label unitPriceValueLabel;
+
+    public void initialize() {
+        // Initialize the ComboBox with the items from the model
+        itemsComboBox.setItems(itemModel.getItems());
+
+        // Bind the purchase units label with the slider value
+        purchaseUnitsLabel.textProperty().bind(
+                purchaseUnitsSlider.valueProperty().asString("%.0f"));
+
+        // Bind the unit value label with the selected item's unit price
+        unitValueLabel.textProperty().bind(
+                itemsComboBox.valueProperty().map(item -> "$" + item.getUnitPrice()));
+
+        // Bind the unit price value label with the selected item's total price
+        ObjectBinding<Double> totalPriceBinding = new DoubleBinding() {
+            {
+                super.bind(itemsComboBox.valueProperty(), purchaseUnitsSlider.valueProperty());
+            }
+
+            @Override
+            protected double computeValue() {
+                Item selectedItem = itemsComboBox.getValue();
+                double purchaseUnits = purchaseUnitsSlider.getValue();
+                return selectedItem.getUnitPrice() * purchaseUnits;
+            }
+        };
+        unitPriceValueLabel.textProperty().bind(totalPriceBinding.asString("$%.2f"));
+    }
+}
+Cart Class:
+
+java
+Copy code
+import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
+import java.io.IOException;
+
+public class Cart extends Application {
+    private ItemModel itemModel = new ItemModel();
+
+    @Override
+    public void start(Stage primaryStage) throws IOException {
+        // Load the FXML file and create the root node
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("ItemView.fxml"));
+        ItemView itemView = new ItemView();
+        loader.setController(itemView);
+        primaryStage.setScene(new Scene(loader.load()));
+        primaryStage.show();
+
+        // Load the data into the model
+        itemModel.loadData();
+
+        // Setup the view
+        itemView.initialize();
+    }
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+}
